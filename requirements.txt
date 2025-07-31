@@ -1,5 +1,6 @@
+pip==23.2
+setuptools
+wheel
+Cython
 aiogram==2.25.1
 aiohttp==3.8.1
-wheel
-setuptools
-Cython
