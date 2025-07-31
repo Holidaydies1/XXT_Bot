@@ -1,5 +1,5 @@
 wheel
 setuptools
 Cython
-aiohttp==3.8.1
-aiogram==3.0.0b7
+aiohttp
+aiogram
