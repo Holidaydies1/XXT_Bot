@@ -1,0 +1,17 @@
+[02.08.2025]  
+XXT Bot – Current Features:  
+- Channel integration (daily posts & polls)  
+- Support menu (FAQ + tickets)  
+- Changelog (in bot + channel auto-post)  
+- Motivation & Crypto Tips commands  
+
+In development:  
+- Free Resources section  
+- News updates  
+- Extended FAQ categories  
+- Pricing & Courses menu  
+- Push notifications for updates  
+
+Planned:  
+- API-based crypto news  
+- Interactive courses inside the bot
