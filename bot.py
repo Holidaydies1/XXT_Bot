@@ -14,7 +14,9 @@ logging.basicConfig(level=logging.INFO)
 # Tokens & IDs
 API_TOKEN = os.getenv("API_TOKEN")
 CHANNEL_ID = "@xxt_hub"
+SUPPORT_CHAT_URL = "https://t.me/xxt_support"  # Support chat link
 ADMIN_CHAT_ID = -1001234567890  # Replace with your admin group ID
+SUPPORT_CHAT_ID = -1002222222222  # Replace with actual group ID (Support Chat)
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher(bot)
 
@@ -59,7 +61,8 @@ def main_menu():
         InlineKeyboardButton("📢 Join our Channel", url="https://t.me/xxt_hub"),
         InlineKeyboardButton("🎓 Buy a Course", url="https://yourcoursepaymentlink.com"),
         InlineKeyboardButton("💎 Buy a Subscription", url="https://yoursubscriptionlink.com"),
-        InlineKeyboardButton("🛠 Support", callback_data="support_menu")
+        InlineKeyboardButton("💬 Support Chat", url=SUPPORT_CHAT_URL),
+        InlineKeyboardButton("🛠 Support Menu", callback_data="support_menu")
     )
     return keyboard
 
@@ -154,6 +157,16 @@ async def handle_ticket(message: types.Message):
 @dp.callback_query_handler(lambda c: c.data == "back_to_main")
 async def back_to_main(callback_query: types.CallbackQuery):
     await callback_query.message.edit_text("👋 Welcome back to **XXT Crypto Hub**!", reply_markup=main_menu(), parse_mode="Markdown")
+
+# ---------- Welcome in support chat ----------
+@dp.message_handler(content_types=['new_chat_members'])
+async def greet_new_members(message: types.Message):
+    if message.chat.id == SUPPORT_CHAT_ID:
+        for new_member in message.new_chat_members:
+            await message.reply(
+                f"👋 Welcome, {new_member.full_name}!\n\n"
+                f"Please check out our FAQ with /start in the bot or ask your question here."
+            )
 
 @dp.message_handler()
 async def log_messages(message: types.Message):
