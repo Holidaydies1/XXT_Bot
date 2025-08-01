@@ -68,6 +68,7 @@ def main_menu():
         InlineKeyboardButton("📢 Join our Channel", url="https://t.me/xxt_hub"),
         InlineKeyboardButton("🎓 Buy a Course", url="https://yourcoursepaymentlink.com"),
         InlineKeyboardButton("💎 Buy a Subscription", url="https://yoursubscriptionlink.com"),
+        InlineKeyboardButton("ℹ️ About Us", callback_data="about_us"),
         InlineKeyboardButton("💬 Support Chat", url=SUPPORT_CHAT_URL),
         InlineKeyboardButton("🛠 Support Menu", callback_data="support_menu"),
         InlineKeyboardButton("🆕 Changelog", callback_data="changelog")
@@ -175,6 +176,20 @@ async def show_faq(callback_query: types.CallbackQuery):
 async def show_changelog(callback_query: types.CallbackQuery):
     changelog = load_changelog()
     await callback_query.message.edit_text(f"**Bot Updates:**\n\n{changelog}", reply_markup=back_menu(), parse_mode="Markdown")
+
+@dp.callback_query_handler(lambda c: c.data == "about_us")
+async def show_about(callback_query: types.CallbackQuery):
+    about_text = (
+        "🤖 **About XXT Bot**\n\n"
+        "XXT Hub is your trusted partner for crypto knowledge, motivation, and growth.\n\n"
+        "Here’s what we offer:\n"
+        "- Daily insights and motivational posts\n"
+        "- Guides for beginners and experts\n"
+        "- Exclusive courses and tools\n"
+        "- Direct support and community chat\n\n"
+        "Stay connected and grow with us!"
+    )
+    await callback_query.message.edit_text(about_text, reply_markup=back_menu(), parse_mode="Markdown")
 
 @dp.callback_query_handler(lambda c: c.data == "create_ticket")
 async def create_ticket(callback_query: types.CallbackQuery):
