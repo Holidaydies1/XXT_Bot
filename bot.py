@@ -1,5 +1,5 @@
 from aiogram import Bot, Dispatcher, types, executor
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
 import logging
 import os
 from threading import Thread
@@ -14,7 +14,7 @@ logging.basicConfig(level=logging.INFO)
 # Tokens & IDs
 API_TOKEN = os.getenv("API_TOKEN")
 CHANNEL_ID = "@xxt_hub"
-SUPPORT_CHAT_URL = "https://t.me/xxt_support"  # Support chat link
+SUPPORT_CHAT_URL = "https://t.me/xxt_support"
 ADMIN_CHAT_ID = -1001234567890  # Replace with your admin group ID
 SUPPORT_CHAT_ID = -1002222222222  # Replace with actual group ID
 bot = Bot(token=API_TOKEN)
@@ -70,8 +70,7 @@ def main_menu():
         InlineKeyboardButton("💎 Buy a Subscription", url="https://yoursubscriptionlink.com"),
         InlineKeyboardButton("💬 Support Chat", url=SUPPORT_CHAT_URL),
         InlineKeyboardButton("🛠 Support Menu", callback_data="support_menu"),
-        InlineKeyboardButton("🆕 Changelog", callback_data="changelog"),
-        InlineKeyboardButton("ℹ About Us", callback_data="about_us")
+        InlineKeyboardButton("🆕 Changelog", callback_data="changelog")
     )
     return keyboard
 
@@ -86,6 +85,17 @@ def support_menu():
 
 def back_menu():
     return InlineKeyboardMarkup().add(InlineKeyboardButton("⬅ Back to Menu", callback_data="back_to_main"))
+
+# ---------- Reply Keyboard (Persistent buttons) ----------
+def navigation_keyboard():
+    keyboard = ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=False)
+    keyboard.add(
+        KeyboardButton("About Us"),
+        KeyboardButton("Motivation"),
+        KeyboardButton("Crypto Tip"),
+        KeyboardButton("Support")
+    )
+    return keyboard
 
 # ---------- Daily posts ----------
 async def daily_post():
@@ -105,7 +115,6 @@ async def daily_post():
         post_text = f"**{phrase}**\n\n{tip}\n\n{call_to_action}"
         await bot.send_message(CHANNEL_ID, post_text, parse_mode="Markdown")
 
-        # Poll every 3 days
         if datetime.now().day % 3 == 0:
             await bot.send_poll(
                 CHANNEL_ID,
@@ -167,11 +176,6 @@ async def show_changelog(callback_query: types.CallbackQuery):
     changelog = load_changelog()
     await callback_query.message.edit_text(f"**Bot Updates:**\n\n{changelog}", reply_markup=back_menu(), parse_mode="Markdown")
 
-@dp.callback_query_handler(lambda c: c.data == "about_us")
-async def show_about_us(callback_query: types.CallbackQuery):
-    about_us_text = "🤖 XXT Bot is your guide to growth in crypto and personal development. We are here to support you!"
-    await callback_query.message.edit_text(f"**About Us:**\n\n{about_us_text}", reply_markup=back_menu(), parse_mode="Markdown")
-
 @dp.callback_query_handler(lambda c: c.data == "create_ticket")
 async def create_ticket(callback_query: types.CallbackQuery):
     await callback_query.message.answer("✍️ Please describe your issue in one message. Our team will contact you.")
@@ -185,6 +189,16 @@ async def handle_ticket(message: types.Message):
 @dp.callback_query_handler(lambda c: c.data == "back_to_main")
 async def back_to_main(callback_query: types.CallbackQuery):
     await callback_query.message.edit_text("👋 Welcome back to **XXT Crypto Hub**!", reply_markup=main_menu(), parse_mode="Markdown")
+
+# ---------- Welcome in support chat ----------
+@dp.message_handler(content_types=['new_chat_members'])
+async def greet_new_members(message: types.Message):
+    if message.chat.id == SUPPORT_CHAT_ID:
+        for new_member in message.new_chat_members:
+            await message.reply(
+                f"👋 Welcome, {new_member.full_name}!\n\n"
+                f"Please check out our FAQ with /start in the bot or ask your question here."
+            )
 
 @dp.message_handler()
 async def log_messages(message: types.Message):
