@@ -1,0 +1,4 @@
+[02.08.2025]
+- Added automatic changelog posting to channel
+- Improved navigation
+- Added Changelog section in the bot
