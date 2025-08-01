@@ -14,9 +14,9 @@ logging.basicConfig(level=logging.INFO)
 # Tokens & IDs
 API_TOKEN = os.getenv("API_TOKEN")
 CHANNEL_ID = "@xxt_hub"
-SUPPORT_CHAT_URL = "https://t.me/xxt_support"  # Support chat link
+SUPPORT_CHAT_URL = "https://t.me/xxt_support"
 ADMIN_CHAT_ID = -1001234567890  # Replace with your admin group ID
-SUPPORT_CHAT_ID = -1002222222222  # Replace with actual group ID (Support Chat)
+SUPPORT_CHAT_ID = -1002222222222  # Replace with actual group ID
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher(bot)
 
@@ -54,6 +54,13 @@ def load_faq():
     except FileNotFoundError:
         return "FAQ is empty. Please add content to faq.txt."
 
+def load_changelog():
+    try:
+        with open("changelog.txt", "r", encoding="utf-8") as f:
+            return f.read()
+    except FileNotFoundError:
+        return "No updates logged yet."
+
 # ---------- Keyboards ----------
 def main_menu():
     keyboard = InlineKeyboardMarkup(row_width=1)
@@ -62,7 +69,8 @@ def main_menu():
         InlineKeyboardButton("🎓 Buy a Course", url="https://yourcoursepaymentlink.com"),
         InlineKeyboardButton("💎 Buy a Subscription", url="https://yoursubscriptionlink.com"),
         InlineKeyboardButton("💬 Support Chat", url=SUPPORT_CHAT_URL),
-        InlineKeyboardButton("🛠 Support Menu", callback_data="support_menu")
+        InlineKeyboardButton("🛠 Support Menu", callback_data="support_menu"),
+        InlineKeyboardButton("🆕 Changelog", callback_data="changelog")
     )
     return keyboard
 
@@ -74,6 +82,9 @@ def support_menu():
         InlineKeyboardButton("⬅ Back", callback_data="back_to_main")
     )
     return keyboard
+
+def back_menu():
+    return InlineKeyboardMarkup().add(InlineKeyboardButton("⬅ Back to Menu", callback_data="back_to_main"))
 
 # ---------- Daily posts ----------
 async def daily_post():
@@ -93,7 +104,6 @@ async def daily_post():
         post_text = f"**{phrase}**\n\n{tip}\n\n{call_to_action}"
         await bot.send_message(CHANNEL_ID, post_text, parse_mode="Markdown")
 
-        # Poll every 3 days
         if datetime.now().day % 3 == 0:
             await bot.send_poll(
                 CHANNEL_ID,
@@ -101,6 +111,12 @@ async def daily_post():
                 options=["Trading basics", "Market analysis", "Crypto tools", "Motivational tips"],
                 is_anonymous=True
             )
+
+# ---------- Auto post changelog to channel on start ----------
+async def post_changelog_to_channel():
+    changelog = load_changelog()
+    if changelog.strip():
+        await bot.send_message(CHANNEL_ID, f"**🚀 XXT Bot has been updated!**\n\n{changelog}", parse_mode="Markdown")
 
 # ---------- Commands ----------
 @dp.message_handler(commands=['start'])
@@ -134,7 +150,7 @@ async def cryptotip(message: types.Message):
     tip = random.choice(crypto_tips) if crypto_tips else "Pro tip: Always do your own research."
     await message.answer(f"**Crypto Tip:**\n{tip}", parse_mode="Markdown")
 
-# ---------- Support ----------
+# ---------- Callbacks ----------
 @dp.callback_query_handler(lambda c: c.data == "support_menu")
 async def show_support_menu(callback_query: types.CallbackQuery):
     await callback_query.message.edit_text("🛠 Support Menu:", reply_markup=support_menu())
@@ -142,7 +158,12 @@ async def show_support_menu(callback_query: types.CallbackQuery):
 @dp.callback_query_handler(lambda c: c.data == "faq")
 async def show_faq(callback_query: types.CallbackQuery):
     faq_content = load_faq()
-    await callback_query.message.edit_text(f"**FAQ:**\n\n{faq_content}", parse_mode="Markdown")
+    await callback_query.message.edit_text(f"**FAQ:**\n\n{faq_content}", reply_markup=back_menu(), parse_mode="Markdown")
+
+@dp.callback_query_handler(lambda c: c.data == "changelog")
+async def show_changelog(callback_query: types.CallbackQuery):
+    changelog = load_changelog()
+    await callback_query.message.edit_text(f"**Bot Updates:**\n\n{changelog}", reply_markup=back_menu(), parse_mode="Markdown")
 
 @dp.callback_query_handler(lambda c: c.data == "create_ticket")
 async def create_ticket(callback_query: types.CallbackQuery):
@@ -176,5 +197,6 @@ async def log_messages(message: types.Message):
 # ---------- Run ----------
 if __name__ == "__main__":
     loop = asyncio.get_event_loop()
+    loop.create_task(post_changelog_to_channel())
     loop.create_task(daily_post())
     executor.start_polling(dp, skip_updates=True)
