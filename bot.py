@@ -11,9 +11,10 @@ from datetime import datetime, timedelta
 # Logging
 logging.basicConfig(level=logging.INFO)
 
-# Token & Channel
+# Tokens & IDs
 API_TOKEN = os.getenv("API_TOKEN")
-CHANNEL_ID = "@xxt_hub"  # our channel
+CHANNEL_ID = "@xxt_hub"
+ADMIN_CHAT_ID = -1001234567890  # Replace with your admin group ID
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher(bot)
 
@@ -33,25 +34,41 @@ def run_server():
 Thread(target=run_server, daemon=True).start()
 # ---------------------------------------------
 
-# ---------- Load content from files ----------
-def load_phrases(file_name):
+# ---------- Load content ----------
+def load_file(file_name):
     if os.path.exists(file_name):
         with open(file_name, "r", encoding="utf-8") as f:
             return [line.strip() for line in f if line.strip()]
     return []
 
-phrases = load_phrases("phrases.txt")  # motivational quotes
-cta = load_phrases("cta.txt")  # call-to-actions
-crypto_tips = load_phrases("crypto_tips.txt")  # crypto tips
-# ---------------------------------------------
+phrases = load_file("phrases.txt")
+cta = load_file("cta.txt")
+crypto_tips = load_file("crypto_tips.txt")
 
-# ---------- Main menu ----------
+def load_faq():
+    try:
+        with open("faq.txt", "r", encoding="utf-8") as f:
+            return f.read()
+    except FileNotFoundError:
+        return "FAQ is empty. Please add content to faq.txt."
+
+# ---------- Keyboards ----------
 def main_menu():
     keyboard = InlineKeyboardMarkup(row_width=1)
     keyboard.add(
-        InlineKeyboardButton("📢 Join our channel", url="https://t.me/xxt_hub"),
-        InlineKeyboardButton("🎓 Buy a course", url="https://yourcoursepaymentlink.com"),
-        InlineKeyboardButton("💎 Get a subscription", url="https://yoursubscriptionlink.com")
+        InlineKeyboardButton("📢 Join our Channel", url="https://t.me/xxt_hub"),
+        InlineKeyboardButton("🎓 Buy a Course", url="https://yourcoursepaymentlink.com"),
+        InlineKeyboardButton("💎 Buy a Subscription", url="https://yoursubscriptionlink.com"),
+        InlineKeyboardButton("🛠 Support", callback_data="support_menu")
+    )
+    return keyboard
+
+def support_menu():
+    keyboard = InlineKeyboardMarkup(row_width=1)
+    keyboard.add(
+        InlineKeyboardButton("📚 FAQ", callback_data="faq"),
+        InlineKeyboardButton("✍️ Create Ticket", callback_data="create_ticket"),
+        InlineKeyboardButton("⬅ Back", callback_data="back_to_main")
     )
     return keyboard
 
@@ -85,9 +102,8 @@ async def daily_post():
 # ---------- Commands ----------
 @dp.message_handler(commands=['start'])
 async def start(message: types.Message):
-    logging.info(f"User {message.from_user.id} wrote /start")
     await message.answer(
-        "👋 Welcome to **XXT Crypto Hub**!\n\nChoose an action below:",
+        "👋 Welcome to **XXT Crypto Hub**!\n\nChoose an option below:",
         reply_markup=main_menu(),
         parse_mode="Markdown"
     )
@@ -104,6 +120,40 @@ async def about(message: types.Message):
         "Stay connected and grow with us!",
         parse_mode="Markdown"
     )
+
+@dp.message_handler(commands=['motivation'])
+async def motivation(message: types.Message):
+    phrase = random.choice(phrases) if phrases else "Stay motivated!"
+    await message.answer(f"**Motivation:**\n{phrase}", parse_mode="Markdown")
+
+@dp.message_handler(commands=['cryptotip'])
+async def cryptotip(message: types.Message):
+    tip = random.choice(crypto_tips) if crypto_tips else "Pro tip: Always do your own research."
+    await message.answer(f"**Crypto Tip:**\n{tip}", parse_mode="Markdown")
+
+# ---------- Support ----------
+@dp.callback_query_handler(lambda c: c.data == "support_menu")
+async def show_support_menu(callback_query: types.CallbackQuery):
+    await callback_query.message.edit_text("🛠 Support Menu:", reply_markup=support_menu())
+
+@dp.callback_query_handler(lambda c: c.data == "faq")
+async def show_faq(callback_query: types.CallbackQuery):
+    faq_content = load_faq()
+    await callback_query.message.edit_text(f"**FAQ:**\n\n{faq_content}", parse_mode="Markdown")
+
+@dp.callback_query_handler(lambda c: c.data == "create_ticket")
+async def create_ticket(callback_query: types.CallbackQuery):
+    await callback_query.message.answer("✍️ Please describe your issue in one message. Our team will contact you.")
+    dp.register_message_handler(handle_ticket, state=None)
+
+async def handle_ticket(message: types.Message):
+    await bot.send_message(ADMIN_CHAT_ID, f"📩 *New Support Ticket* from {message.from_user.full_name} (@{message.from_user.username}):\n\n{message.text}", parse_mode="Markdown")
+    await message.answer("✅ Your ticket has been sent! Our team will contact you soon.")
+    dp.message_handlers.unregister(handle_ticket)
+
+@dp.callback_query_handler(lambda c: c.data == "back_to_main")
+async def back_to_main(callback_query: types.CallbackQuery):
+    await callback_query.message.edit_text("👋 Welcome back to **XXT Crypto Hub**!", reply_markup=main_menu(), parse_mode="Markdown")
 
 @dp.message_handler()
 async def log_messages(message: types.Message):
