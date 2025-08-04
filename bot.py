@@ -64,7 +64,7 @@ def load_changelog():
 def exchanges_menu():
     keyboard = InlineKeyboardMarkup(row_width=1)
     keyboard.add(
-        InlineKeyboardButton("Binance (отримай бонуси)", url="https://accounts.binance.com/en/register?ref=YOUR_REF_LINK"),
+        InlineKeyboardButton("Binance (отримай бонуси)", url="https://www.binance.com/activity/referral-entry/CPA?ref=CPA_00E3Q231SH"),
         InlineKeyboardButton("KuCoin (незабаром)", url="https://www.kucoin.com"),
         InlineKeyboardButton("Bybit (незабаром)", url="https://www.bybit.com"),
         InlineKeyboardButton("⬅ Back", callback_data="back_to_main")
