@@ -1,4 +1,8 @@
-[02.08.2025]
-- Added automatic changelog posting to channel
-- Improved navigation
-- Added Changelog section in the bot
+Changelog:
+- Added daily motivational messages.
+- Added Get Motivation button.
+- Added FAQ section (Binance ready, others coming soon).
+- Added Changelog display.
+- Added Ask a Question support system.
+- Added admin commands: /news and /stats.
+
