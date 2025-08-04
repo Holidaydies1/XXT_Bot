@@ -74,6 +74,7 @@ def main_menu():
         InlineKeyboardButton("🆕 Changelog", callback_data="changelog")
     )
     return keyboard
+    keyboard.add(InlineKeyboardButton(\"💰 Recommended Exchanges\", callback_data=\"exchanges\"))
 
 def support_menu():
     keyboard = InlineKeyboardMarkup(row_width=1)
@@ -226,3 +227,23 @@ if __name__ == "__main__":
     loop.create_task(post_changelog_to_channel())
     loop.create_task(daily_post())
     executor.start_polling(dp, skip_updates=True)
+
+# --- НОВА ФУНКЦІЯ ---
+def exchanges_menu():
+    keyboard = InlineKeyboardMarkup(row_width=1)
+    keyboard.add(
+        InlineKeyboardButton("Binance (отримай бонуси)", url="https://accounts.binance.com/en/register?ref=YOUR_REF_LINK"),
+        InlineKeyboardButton("KuCoin (незабаром)", url="https://www.kucoin.com"),
+        InlineKeyboardButton("Bybit (незабаром)", url="https://www.bybit.com"),
+        InlineKeyboardButton("⬅ Back", callback_data="back_to_main")
+    )
+    return keyboard
+
+# --- Хендлер для переходу в меню бірж ---
+@dp.callback_query_handler(lambda c: c.data == "exchanges")
+async def show_exchanges(callback_query: types.CallbackQuery):
+    await callback_query.message.edit_text(
+        "💰 **Рекомендовані біржі:**\n\nВибери платформу для реєстрації та отримай бонуси!",
+        reply_markup=exchanges_menu(),
+        parse_mode="Markdown"
+    )
