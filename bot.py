@@ -16,12 +16,12 @@ logging.basicConfig(level=logging.INFO)
 API_TOKEN = os.getenv("API_TOKEN")
 CHANNEL_ID = "@xxt_hub"
 SUPPORT_CHAT_URL = "https://t.me/xxt_support"
-ADMIN_CHAT_ID = -1001234567890
-SUPPORT_CHAT_ID = -1002222222222
+ADMIN_CHAT_ID = -1001234567890  # Replace with your admin group ID
+SUPPORT_CHAT_ID = -1002222222222  # Replace with actual group ID
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher(bot)
 
-# Health-check for Render
+# ---------- Health-check for Render ----------
 class HealthHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
@@ -35,8 +35,9 @@ def run_server():
     httpd.serve_forever()
 
 Thread(target=run_server, daemon=True).start()
+# ---------------------------------------------
 
-# Load content
+# ---------- Load content ----------
 def load_file(file_name):
     if os.path.exists(file_name):
         with open(file_name, "r", encoding="utf-8") as f:
@@ -61,17 +62,7 @@ def load_changelog():
     except FileNotFoundError:
         return "No updates logged yet."
 
-# Menus
-def exchanges_menu():
-    keyboard = InlineKeyboardMarkup(row_width=1)
-    keyboard.add(
-        InlineKeyboardButton("Binance (отримай бонуси)", url="https://www.binance.com/activity/referral-entry/CPA?ref=CPA_00E3Q231SH"),
-        InlineKeyboardButton("KuCoin (незабаром)", url="https://www.kucoin.com"),
-        InlineKeyboardButton("Bybit (незабаром)", url="https://www.bybit.com"),
-        InlineKeyboardButton("⬅ Back", callback_data="back_to_main")
-    )
-    return keyboard
-
+# ---------- Keyboards ----------
 def main_menu():
     keyboard = InlineKeyboardMarkup(row_width=1)
     keyboard.add(
@@ -80,7 +71,8 @@ def main_menu():
         InlineKeyboardButton("💎 Buy a Subscription", url="https://yoursubscriptionlink.com"),
         InlineKeyboardButton("💬 Support Chat", url=SUPPORT_CHAT_URL),
         InlineKeyboardButton("🛠 Support Menu", callback_data="support_menu"),
-        InlineKeyboardButton("💰 Recommended Exchanges", callback_data="exchanges")
+        InlineKeyboardButton("💰 Recommended Exchanges", callback_data="exchanges"),
+        InlineKeyboardButton("🆕 Changelog", callback_data="changelog")
     )
     return keyboard
 
@@ -93,10 +85,20 @@ def support_menu():
     )
     return keyboard
 
+def exchanges_menu():
+    keyboard = InlineKeyboardMarkup(row_width=1)
+    keyboard.add(
+        InlineKeyboardButton("Binance (Get Bonus)", url="https://www.binance.com/activity/referral-entry/CPA?ref=CPA_00E3Q231SH"),
+        InlineKeyboardButton("KuCoin (Coming Soon)", url="https://kucoin.com"),
+        InlineKeyboardButton("Bybit (Coming Soon)", url="https://bybit.com"),
+        InlineKeyboardButton("⬅ Back", callback_data="back_to_main")
+    )
+    return keyboard
+
 def back_menu():
     return InlineKeyboardMarkup().add(InlineKeyboardButton("⬅ Back to Menu", callback_data="back_to_main"))
 
-# Daily posts
+# ---------- Daily posts ----------
 async def daily_post():
     await bot.send_message(CHANNEL_ID, "👋 XXT Bot is back online. Stay tuned for updates!")
     while True:
@@ -122,26 +124,18 @@ async def daily_post():
                 is_anonymous=True
             )
 
-# Changelog post
+# ---------- Auto post changelog ----------
 async def post_changelog_to_channel():
     changelog = load_changelog()
     if changelog.strip():
         await bot.send_message(CHANNEL_ID, f"**🚀 XXT Bot has been updated!**\n\n{changelog}", parse_mode="Markdown")
 
-# Commands
+# ---------- Commands ----------
 @dp.message_handler(commands=['start'])
 async def start(message: types.Message):
     await message.answer(
         "👋 Welcome to **XXT Crypto Hub**!\n\nChoose an option below:",
         reply_markup=main_menu(),
-        parse_mode="Markdown"
-    )
-
-@dp.callback_query_handler(lambda c: c.data == "exchanges")
-async def show_exchanges(callback_query: types.CallbackQuery):
-    await callback_query.message.edit_text(
-        "💰 **Рекомендовані біржі:**\n\nВибери платформу для реєстрації та отримай бонуси!",
-        reply_markup=exchanges_menu(),
         parse_mode="Markdown"
     )
 
@@ -168,7 +162,7 @@ async def cryptotip(message: types.Message):
     tip = random.choice(crypto_tips) if crypto_tips else "Pro tip: Always do your own research."
     await message.answer(f"**Crypto Tip:**\n{tip}", parse_mode="Markdown")
 
-# Callbacks
+# ---------- Callbacks ----------
 @dp.callback_query_handler(lambda c: c.data == "support_menu")
 async def show_support_menu(callback_query: types.CallbackQuery):
     await callback_query.message.edit_text("🛠 Support Menu:", reply_markup=support_menu())
@@ -177,6 +171,15 @@ async def show_support_menu(callback_query: types.CallbackQuery):
 async def show_faq(callback_query: types.CallbackQuery):
     faq_content = load_faq()
     await callback_query.message.edit_text(f"**FAQ:**\n\n{faq_content}", reply_markup=back_menu(), parse_mode="Markdown")
+
+@dp.callback_query_handler(lambda c: c.data == "changelog")
+async def show_changelog(callback_query: types.CallbackQuery):
+    changelog = load_changelog()
+    await callback_query.message.edit_text(f"**Bot Updates:**\n\n{changelog}", reply_markup=back_menu(), parse_mode="Markdown")
+
+@dp.callback_query_handler(lambda c: c.data == "exchanges")
+async def show_exchanges(callback_query: types.CallbackQuery):
+    await callback_query.message.edit_text("💰 Recommended Exchanges:\n\nChoose a platform to register and get bonuses!", reply_markup=exchanges_menu())
 
 @dp.callback_query_handler(lambda c: c.data == "create_ticket")
 async def create_ticket(callback_query: types.CallbackQuery):
@@ -192,6 +195,7 @@ async def handle_ticket(message: types.Message):
 async def back_to_main(callback_query: types.CallbackQuery):
     await callback_query.message.edit_text("👋 Welcome back to **XXT Crypto Hub**!", reply_markup=main_menu(), parse_mode="Markdown")
 
+# ---------- Welcome in support chat ----------
 @dp.message_handler(content_types=['new_chat_members'])
 async def greet_new_members(message: types.Message):
     if message.chat.id == SUPPORT_CHAT_ID:
@@ -206,7 +210,7 @@ async def log_messages(message: types.Message):
     logging.info(f"User {message.from_user.id} wrote: {message.text}")
     await message.answer("Thank you for your message! Use /start to open the menu.")
 
-# Run
+# ---------- Run ----------
 if __name__ == "__main__":
     loop = asyncio.get_event_loop()
     loop.create_task(post_changelog_to_channel())
