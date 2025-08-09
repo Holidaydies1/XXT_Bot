@@ -215,6 +215,12 @@ async def log_messages(message: types.Message):
     await message.answer("Thank you for your message! Use /start to open the menu.")
 
 # ---------- Run ----------
+def run_server():
+    server_address = ('', 8080)
+    httpd = HTTPServer(server_address, HealthHandler)
+    httpd.serve_forever()
+
+Thread(target=run_server).start()
 if __name__ == "__main__":
     loop = asyncio.get_event_loop()
     loop.create_task(post_changelog_to_channel())
