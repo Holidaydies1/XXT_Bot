@@ -222,6 +222,7 @@ def run_server():
 
 Thread(target=run_server).start()
 if __name__ == "__main__":
+    print("[START] Bot is running and ready to work")
     loop = asyncio.get_event_loop()
     loop.create_task(post_changelog_to_channel())
     loop.create_task(daily_post())
