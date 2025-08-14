@@ -1,228 +1,193 @@
+# ===========================
+# XXT Telegram Bot (aiogram)
+# Ready for Render + UptimeRobot
+# Language: EN (all user-facing text)
+# ===========================
 
-from aiogram import Bot, Dispatcher, types, executor
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-import logging
 import os
+import asyncio
+import logging
+from datetime import datetime, timedelta
 from threading import Thread
 from http.server import BaseHTTPRequestHandler, HTTPServer
-import asyncio
-import random
-from datetime import datetime, timedelta
 
-# Logging
-logging.basicConfig(level=logging.INFO)
+from aiogram import Bot, Dispatcher, types
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.utils import executor
 
-# Tokens & IDs
+# ---------- Logging ----------
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s"
+)
+logger = logging.getLogger(__name__)
+
+# ---------- Tokens & IDs ----------
 API_TOKEN = os.getenv("API_TOKEN")
-CHANNEL_ID = "@xxt_hub"
-SUPPORT_CHAT_URL = "https://t.me/xxt_support"
-ADMIN_CHAT_ID = -1001234567890  # Replace with your admin group ID
-SUPPORT_CHAT_ID = -1002222222222  # Replace with actual group ID
-bot = Bot(token=API_TOKEN)
+if not API_TOKEN:
+    raise RuntimeError("API_TOKEN is not set")
+
+# can be @username or numeric id -100XXXXXXXXXX
+CHANNEL_ID = os.getenv("CHANNEL_ID", "@xxt_hub")
+SUPPORT_CHAT_URL = os.getenv("SUPPORT_CHAT_URL", "https://t.me/xxt_support")
+ADMIN_CHAT_ID = int(os.getenv("ADMIN_CHAT_ID", "-1001234567890"))
+SUPPORT_CHAT_ID = int(os.getenv("SUPPORT_CHAT_ID", "-1002222222222"))
+
+bot = Bot(token=API_TOKEN, parse_mode="HTML")
 dp = Dispatcher(bot)
 
-# ---------- Health-check for Render ----------
+# ---------- Health-check for Render (anti-sleep) ----------
 class HealthHandler(BaseHTTPRequestHandler):
     def do_GET(self):
-     logging.info("[PING] Received ping from uptime monitor")  # Лог у Render
+        logging.info("[PING] Received ping from uptime monitor")
         self.send_response(200)
         self.end_headers()
         self.wfile.write(b"OK")
 
-Thread(target=run_server, daemon=True).start()
-# ---------------------------------------------
+    def log_message(self, format, *args):
+        return  # silence default http.server logs
+
+def run_server():
+    port = int(os.getenv("PORT", os.getenv("PING_PORT", "10000")))
+    server_address = ('', port)
+    httpd = HTTPServer(server_address, HealthHandler)
+    logging.info(f"[HEALTH] Anti-sleep server started on port {port}")
+    httpd.serve_forever()
 
 # ---------- Load content ----------
-def load_file(file_name):
+def load_file(file_name: str):
     if os.path.exists(file_name):
         with open(file_name, "r", encoding="utf-8") as f:
             return [line.strip() for line in f if line.strip()]
     return []
 
-phrases = load_file("phrases.txt")
-cta = load_file("cta.txt")
-crypto_tips = load_file("crypto_tips.txt")
-
-def load_faq():
-    try:
-        with open("faq.txt", "r", encoding="utf-8") as f:
-            return f.read()
-    except FileNotFoundError:
-        return "FAQ is empty. Please add content to faq.txt."
-
-def load_changelog():
-    try:
-        with open("changelog.txt", "r", encoding="utf-8") as f:
-            return f.read()
-    except FileNotFoundError:
-        return "No updates logged yet."
+quotes = load_file("phrases.txt") or [
+    "You are stronger than you think.",
+    "Small steps daily = big changes.",
+    "Discipline beats motivation."
+]
+cta_lines = load_file("cta.txt") or [
+    "Join our channel for daily insights."
+]
+crypto_tips = load_file("crypto_tips.txt") or [
+    "Never invest money you can’t afford to lose.",
+    "Do your own research (DYOR) and diversify risk."
+]
 
 # ---------- Keyboards ----------
-def main_menu():
-    keyboard = InlineKeyboardMarkup(row_width=1)
-    keyboard.add(
-        InlineKeyboardButton("📢 Join our Channel", url="https://t.me/xxt_hub"),
-        InlineKeyboardButton("🎓 Buy a Course", url="https://yourcoursepaymentlink.com"),
-        InlineKeyboardButton("💎 Buy a Subscription", url="https://yoursubscriptionlink.com"),
-        InlineKeyboardButton("💬 Support Chat", url=SUPPORT_CHAT_URL),
-        InlineKeyboardButton("🛠 Support Menu", callback_data="support_menu"),
-        InlineKeyboardButton("💰 Recommended Exchanges", callback_data="exchanges"),
-        InlineKeyboardButton("🆕 Changelog", callback_data="changelog")
+def main_kb() -> InlineKeyboardMarkup:
+    kb = InlineKeyboardMarkup(row_width=2)
+    kb.add(
+        InlineKeyboardButton("🔥 Channel", url=os.getenv("TG_CHANNEL_URL", "https://t.me/xxt_hub")),
+        InlineKeyboardButton("💬 Chat", url=os.getenv("TG_CHAT_URL", "https://t.me/xxt_support")),
+        InlineKeyboardButton("🎬 TikTok", url=os.getenv("TT_URL", "https://tiktok.com/@xxt")),
+        InlineKeyboardButton("▶️ YouTube", url=os.getenv("YT_URL", "https://youtube.com/@xxt")),
+        InlineKeyboardButton("📘 Facebook", url=os.getenv("FB_URL", "https://facebook.com/xxt")),
     )
-    return keyboard
-
-def exchanges_menu():
-    keyboard = InlineKeyboardMarkup(row_width=1)
-    keyboard.add(
-        InlineKeyboardButton("Binance (Get Bonus)", url="https://www.binance.com/activity/referral-entry/CPA?ref=CPA_00E3Q231SH"),
-        InlineKeyboardButton("KuCoin (Coming soon)", callback_data="coming_soon"),
-        InlineKeyboardButton("Bybit (Coming soon)", callback_data="coming_soon"),
-        InlineKeyboardButton("⬅ Back", callback_data="back_to_main")
-    )
-    return keyboard
-
-def support_menu():
-    keyboard = InlineKeyboardMarkup(row_width=1)
-    keyboard.add(
-        InlineKeyboardButton("📚 FAQ", callback_data="faq"),
-        InlineKeyboardButton("✍️ Create Ticket", callback_data="create_ticket"),
-        InlineKeyboardButton("⬅ Back", callback_data="back_to_main")
-    )
-    return keyboard
-
-def back_menu():
-    return InlineKeyboardMarkup().add(InlineKeyboardButton("⬅ Back to Menu", callback_data="back_to_main"))
-
-# ---------- Daily posts ----------
-async def daily_post():
-    await bot.send_message(CHANNEL_ID, "👋 XXT Bot is back online. Stay tuned for updates!")
-    while True:
-        now = datetime.now()
-        target_time = now.replace(hour=10, minute=0, second=0, microsecond=0)
-        if now > target_time:
-            target_time += timedelta(days=1)
-        wait_time = (target_time - now).total_seconds()
-        await asyncio.sleep(wait_time)
-
-        phrase = random.choice(phrases) if phrases else "Stay motivated!"
-        call_to_action = random.choice(cta) if cta else "💡 Want to grow? Chat with me in @XXTCryptoBot"
-        tip = random.choice(crypto_tips) if crypto_tips else "Pro tip: Never invest more than you can afford to lose."
-
-        post_text = f"**{phrase}**\n\n{tip}\n\n{call_to_action}"
-        await bot.send_message(CHANNEL_ID, post_text, parse_mode="Markdown")
-
-        if datetime.now().day % 3 == 0:
-            await bot.send_poll(
-                CHANNEL_ID,
-                question="Which topic should we cover next?",
-                options=["Trading basics", "Market analysis", "Crypto tools", "Motivational tips"],
-                is_anonymous=True
-            )
-
-# ---------- Auto post changelog to channel on start ----------
-async def post_changelog_to_channel():
-    changelog = load_changelog()
-    if changelog.strip():
-        await bot.send_message(CHANNEL_ID, f"**🚀 XXT Bot has been updated!**\n\n{changelog}", parse_mode="Markdown")
+    return kb
 
 # ---------- Commands ----------
 @dp.message_handler(commands=['start'])
-async def start(message: types.Message):
-    await message.answer(
-        "👋 Welcome to **XXT Crypto Hub**!\n\nChoose an option below:",
-        reply_markup=main_menu(),
-        parse_mode="Markdown"
+async def cmd_start(message: types.Message):
+    logger.info(f"[USER] /start from {message.from_user.id}")
+    text = (
+        "Hi! This is the <b>XXT</b> bot.\n"
+        "Pick where you want to go 👇"
     )
+    await message.answer(text, reply_markup=main_kb())
 
-@dp.message_handler(commands=['about'])
-async def about(message: types.Message):
+@dp.message_handler(commands=['help'])
+async def cmd_help(message: types.Message):
     await message.answer(
-        "🤖 **About XXT Bot**\n\n"
-        "XXT Hub is your gateway to crypto knowledge, daily motivation, and personal growth.\n"
-        "We provide:\n"
-        "- Daily insights and motivational posts\n"
-        "- Guides for beginners and experts\n"
-        "- Exclusive courses and tools\n\n"
-        "Stay connected and grow with us!",
-        parse_mode="Markdown"
+        "/start — main menu\n"
+        "/motivation — random quote\n"
+        "/cryptotip — crypto tip\n"
+        "/about — about XXT + links"
     )
 
 @dp.message_handler(commands=['motivation'])
-async def motivation(message: types.Message):
-    phrase = random.choice(phrases) if phrases else "Stay motivated!"
-    await message.answer(f"**Motivation:**\n{phrase}", parse_mode="Markdown")
+async def cmd_motivation(message: types.Message):
+    import random
+    await message.answer(random.choice(quotes))
 
 @dp.message_handler(commands=['cryptotip'])
-async def cryptotip(message: types.Message):
-    tip = random.choice(crypto_tips) if crypto_tips else "Pro tip: Always do your own research."
-    await message.answer(f"**Crypto Tip:**\n{tip}", parse_mode="Markdown")
+async def cmd_cryptotip(message: types.Message):
+    import random
+    await message.answer("💡 " + random.choice(crypto_tips))
 
-# ---------- Callbacks ----------
-@dp.callback_query_handler(lambda c: c.data == "support_menu")
-async def show_support_menu(callback_query: types.CallbackQuery):
-    await callback_query.message.edit_text("🛠 Support Menu:", reply_markup=support_menu())
+@dp.message_handler(commands=['about'])
+async def cmd_about(message: types.Message):
+    txt = (
+        "<b>XXT Crew</b> — motivation, productivity, mental well‑being.\n\n"
+        "Follow us:\n"
+        f"• Channel: {os.getenv('TG_CHANNEL_URL','https://t.me/xxt_hub')}\n"
+        f"• Chat: {os.getenv('TG_CHAT_URL','https://t.me/xxt_support')}\n"
+        f"• TikTok: {os.getenv('TT_URL','https://tiktok.com/@xxt')}\n"
+        f"• YouTube: {os.getenv('YT_URL','https://youtube.com/@xxt')}\n"
+        f"• Facebook: {os.getenv('FB_URL','https://facebook.com/xxt')}\n"
+    )
+    await message.answer(txt, disable_web_page_preview=True)
 
-@dp.callback_query_handler(lambda c: c.data == "faq")
-async def show_faq(callback_query: types.CallbackQuery):
-    faq_content = load_faq()
-    await callback_query.message.edit_text(f"**FAQ:**\n\n{faq_content}", reply_markup=back_menu(), parse_mode="Markdown")
-
-@dp.callback_query_handler(lambda c: c.data == "changelog")
-async def show_changelog(callback_query: types.CallbackQuery):
-    changelog = load_changelog()
-    await callback_query.message.edit_text(f"**Bot Updates:**\n\n{changelog}", reply_markup=back_menu(), parse_mode="Markdown")
-
-@dp.callback_query_handler(lambda c: c.data == "exchanges")
-async def show_exchanges(callback_query: types.CallbackQuery):
-    await callback_query.message.edit_text("💰 Recommended exchanges:\nChoose a platform to register and get bonuses!", reply_markup=exchanges_menu())
-
-@dp.callback_query_handler(lambda c: c.data == "coming_soon")
-async def coming_soon(callback_query: types.CallbackQuery):
-    await callback_query.answer("Coming soon!", show_alert=True)
-
-@dp.callback_query_handler(lambda c: c.data == "create_ticket")
-async def create_ticket(callback_query: types.CallbackQuery):
-    await callback_query.message.answer("✍️ Please describe your issue in one message. Our team will contact you.")
-    dp.register_message_handler(handle_ticket, state=None)
-
-async def handle_ticket(message: types.Message):
-    await bot.send_message(ADMIN_CHAT_ID, f"📩 *New Support Ticket* from {message.from_user.full_name} (@{message.from_user.username}):\n\n{message.text}", parse_mode="Markdown")
-    await message.answer("✅ Your ticket has been sent! Our team will contact you soon.")
-    dp.message_handlers.unregister(handle_ticket)
-
-@dp.callback_query_handler(lambda c: c.data == "back_to_main")
-async def back_to_main(callback_query: types.CallbackQuery):
-    await callback_query.message.edit_text("👋 Welcome back to **XXT Crypto Hub**!", reply_markup=main_menu(), parse_mode="Markdown")
-
-# ---------- Welcome in support chat ----------
+# ---------- Support chat welcome ----------
 @dp.message_handler(content_types=['new_chat_members'])
 async def greet_new_members(message: types.Message):
     if message.chat.id == SUPPORT_CHAT_ID:
-        for new_member in message.new_chat_members:
+        for u in message.new_chat_members:
             await message.reply(
-                f"👋 Welcome, {new_member.full_name}!\n\n"
-                f"Please check out our FAQ with /start in the bot or ask your question here."
+                f"👋 Welcome, {u.full_name}!\n"
+                f"Use /help in the bot for FAQ. Ask here if you need help."
             )
 
+# ---------- Log any text (guard) ----------
 @dp.message_handler()
 async def log_messages(message: types.Message):
-    logging.info(f"User {message.from_user.id} wrote: {message.text}")9
-    await message.answer("Thank you for your message! Use /start to open the menu.")
+    logging.info(f"User {message.from_user.id} wrote: {message.text}")
+    await message.answer("Thanks! Use /start to open the menu.")
+
+# ---------- Simple schedulers (optional) ----------
+async def post_changelog_to_channel():
+    # placeholder: post updates periodically if needed
+    while True:
+        await asyncio.sleep(3600)
+
+async def daily_post():
+    # daily quote to channel (UTC + optional shift)
+    hour = int(os.getenv("DAILY_HOUR", "9"))
+    minute = int(os.getenv("DAILY_MINUTE", "0"))
+    tz_shift_minutes = int(os.getenv("DAILY_TZ_SHIFT_MIN", "0"))
+
+    def seconds_until_next():
+        now = datetime.utcnow() + timedelta(minutes=tz_shift_minutes)
+        target = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
+        if target <= now:
+            target += timedelta(days=1)
+        return (target - now).total_seconds()
+
+    while True:
+        wait = max(5, int(seconds_until_next()))
+        logging.info(f"[SCHED] Next daily post in {wait}s")
+        await asyncio.sleep(wait)
+        try:
+            import random
+            text = "🧠 " + random.choice(quotes)
+            if CHANNEL_ID:
+                await bot.send_message(CHANNEL_ID, text)
+                logging.info("[SCHED] Posted daily quote to channel")
+        except Exception as e:
+            logging.exception(f"[SCHED] Failed to post: {e}")
+            await asyncio.sleep(10)
 
 # ---------- Run ----------
-def run_server():
-    server_address = ('', 8080)
-    httpd = HTTPServer(server_address, HealthHandler)
-    httpd.serve_forever()
+if __name__ == "__main__":
+    logging.info("[START] Bot is running and ready to work")
 
- def run_server():
-     port = int(os.getenv("PORT", os.getenv("PING_PORT", "10000")))
-     server_address = ('', port)
-     httpd = HTTPServer(server_address, HealthHandler)
-  logging.info(f"[HEALTH] Anti-sleep server started on port {port}")
- 
+    # 1) anti-sleep HTTP server (for Render + UptimeRobot)
+    Thread(target=run_server, daemon=True).start()
+
+    # 2) schedulers (comment out if not needed)
+    loop = asyncio.get_event_loop()
     loop.create_task(post_changelog_to_channel())
     loop.create_task(daily_post())
-    executor.start_polling(dp, skip_updates=True)
-Thread(target=run_server, daemon=True).start()
 
+    # 3) start polling
+    executor.start_polling(dp, skip_updates=True)
