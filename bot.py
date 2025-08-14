@@ -24,7 +24,7 @@ dp = Dispatcher(bot)
 # ---------- Health-check for Render ----------
 class HealthHandler(BaseHTTPRequestHandler):
     def do_GET(self):
-        print("[PING] Received ping from uptime monitor")  # Лог у Render
+     logging.info("[PING] Received ping from uptime monitor")  # Лог у Render
         self.send_response(200)
         self.end_headers()
         self.wfile.write(b"OK")
