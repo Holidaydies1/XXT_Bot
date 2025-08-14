@@ -29,11 +29,6 @@ class HealthHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(b"OK")
 
-def run_server():
-    server_address = ('', 10000)
-    httpd = HTTPServer(server_address, HealthHandler)
-    httpd.serve_forever()
-
 Thread(target=run_server, daemon=True).start()
 # ---------------------------------------------
 
@@ -211,7 +206,7 @@ async def greet_new_members(message: types.Message):
 
 @dp.message_handler()
 async def log_messages(message: types.Message):
-    logging.info(f"User {message.from_user.id} wrote: {message.text}")
+    logging.info(f"User {message.from_user.id} wrote: {message.text}")9
     await message.answer("Thank you for your message! Use /start to open the menu.")
 
 # ---------- Run ----------
@@ -220,10 +215,12 @@ def run_server():
     httpd = HTTPServer(server_address, HealthHandler)
     httpd.serve_forever()
 
-Thread(target=run_server).start()
-if __name__ == "__main__":
-    print("[START] Bot is running and ready to work")
-    loop = asyncio.get_event_loop()
+ def run_server():
+     port = int(os.getenv("PORT", os.getenv("PING_PORT", "10000")))
+     server_address = ('', port)
+     httpd = HTTPServer(server_address, HealthHandler)
+  logging.info(f"[HEALTH] Anti-sleep server started on port {port}")
+ httpd.serve_forever()
     loop.create_task(post_changelog_to_channel())
     loop.create_task(daily_post())
     executor.start_polling(dp, skip_updates=True)
