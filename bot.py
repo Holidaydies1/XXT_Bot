@@ -220,8 +220,9 @@ def run_server():
      server_address = ('', port)
      httpd = HTTPServer(server_address, HealthHandler)
   logging.info(f"[HEALTH] Anti-sleep server started on port {port}")
- httpd.serve_forever()
+ 
     loop.create_task(post_changelog_to_channel())
     loop.create_task(daily_post())
     executor.start_polling(dp, skip_updates=True)
+Thread(target=run_server, daemon=True).start()
 
